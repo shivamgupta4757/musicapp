@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🎵 Web Music Player</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #fff;
+    --text: #0f172a;
+    --accent: #6d28d9;
+    --muted: #64748b;
+    --radius: 16px;
+  }
+
+  body.dark {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #f8fafc;
+    --accent: #a78bfa;
+    --muted: #94a3b8;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Poppins", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    transition: background 0.4s, color 0.4s;
+  }
+
+  .player {
+    width: 340px;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+    text-align: center;
+    transition: background 0.4s;
+  }
+
+  .album-art {
+    width: 100%;
+    height: 240px;
+    border-radius: var(--radius);
+    background: #e2e8f0;
+    background-size: cover;
+    background-position: center;
+    margin-bottom: 20px;
+  }
+
+  .track-info {
+    margin-bottom: 12px;
+  }
+
+  .track-title {
+    font-weight: 600;
+    font-size: 1.1em;
+  }
+
+  .track-artist {
+    font-size: 0.9em;
+    color: var(--muted);
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 10px;
+  }
+
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--accent);
+    transition: transform 0.2s ease;
+  }
+
+  button:hover {
+    transform: scale(1.2);
+  }
+
+  .progress-container {
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 16px 0;
+    cursor: pointer;
+  }
+
+  .progress {
+    width: 0%;
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.2s;
+  }
+
+  .time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    color: var(--muted);
+  }
+
+  .volume {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  input[type="range"] {
+    width: 80%;
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: var(--card);
+    border-radius: 50%;
+    padding: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  @media(max-width:480px){
+    .player { width: 90%; }
+  }
+</style>
+</head>
+<body>
+  <div class="theme-toggle" id="themeToggle">🌙</div>
+
+  <div class="player">
+    <div class="album-art" id="albumArt"></div>
+
+    <div class="track-info">
+      <div class="track-title" id="title">Track Title</div>
+      <div class="track-artist" id="artist">Artist</div>
+    </div>
+
+    <div class="progress-container" id="progressContainer">
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <div class="time">
+      <span id="currentTime">0:00</span>
+      <span id="duration">0:00</span>
+    </div>
+
+    <div class="controls">
+      <button id="prev">⏮</button>
+      <button id="playPause">▶️</button>
+      <button id="next">⏭</button>
+    </div>
+
+    <div class="volume">
+      🔊 <input type="range" id="volume" min="0" max="1" step="0.05" value="1">
+    </div>
+  </div>
+
+  <script>
+    // --- Track List ---
+    const tracks = [
+      {
+        title: "Dreamscape",
+        artist: "HazySky",
+        src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        img: "https://images.unsplash.com/photo-1507874457470-272b3c8d8ee2?auto=format&fit=crop&w=800&q=60"
+      },
+      {
+        title: "Ocean Eyes",
+        artist: "Nightwave",
+        src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+        img: "https://images.unsplash.com/photo-1497032628192-86f99bcd76bc?auto=format&fit=crop&w=800&q=60"
+      },
+      {
+        title: "Lunar Drift",
+        artist: "NovaPulse",
+        src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+        img: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=800&q=60"
+      }
+    ];
+
+    let currentTrack = 0;
+    let isPlaying = false;
+
+    const audio = new Audio(tracks[currentTrack].src);
+
+    // DOM Elements
+    const playBtn = document.getElementById("playPause");
+    const nextBtn = document.getElementById("next");
+    const prevBtn = document.getElementById("prev");
+    const title = document.getElementById("title");
+    const artist = document.getElementById("artist");
+    const albumArt = document.getElementById("albumArt");
+    const progress = document.getElementById("progress");
+    const progressContainer = document.getElementById("progressContainer");
+    const currentTimeEl = document.getElementById("currentTime");
+    const durationEl = document.getElementById("duration");
+    const volumeControl = document.getElementById("volume");
+    const themeToggle = document.getElementById("themeToggle");
+
+    // Load initial track
+    function loadTrack(index) {
+      const track = tracks[index];
+      title.textContent = track.title;
+      artist.textContent = track.artist;
+      albumArt.style.backgroundImage = `url(${track.img})`;
+      audio.src = track.src;
+    }
+    loadTrack(currentTrack);
+
+    // Play / Pause
+    function playTrack() {
+      isPlaying = true;
+      audio.play();
+      playBtn.textContent = "⏸";
+    }
+    function pauseTrack() {
+      isPlaying = false;
+      audio.pause();
+      playBtn.textContent = "▶️";
+    }
+
+    playBtn.addEventListener("click", () => {
+      isPlaying ? pauseTrack() : playTrack();
+    });
+
+    // Next / Prev
+    nextBtn.addEventListener("click", () => {
+      currentTrack = (currentTrack + 1) % tracks.length;
+      loadTrack(currentTrack);
+      playTrack();
+    });
+    prevBtn.addEventListener("click", () => {
+      currentTrack = (currentTrack - 1 + tracks.length) % tracks.length;
+      loadTrack(currentTrack);
+      playTrack();
+    });
+
+    // Progress bar
+    audio.addEventListener("timeupdate", () => {
+      const progressPercent = (audio.currentTime / audio.duration) * 100;
+      progress.style.width = `${progressPercent}%`;
+
+      let curMin = Math.floor(audio.currentTime / 60);
+      let curSec = Math.floor(audio.currentTime % 60);
+      if (curSec < 10) curSec = `0${curSec}`;
+      currentTimeEl.textContent = `${curMin}:${curSec}`;
+
+      let durMin = Math.floor(audio.duration / 60);
+      let durSec = Math.floor(audio.duration % 60);
+      if (durSec < 10) durSec = `0${durSec}`;
+      if (durMin || durSec) durationEl.textContent = `${durMin}:${durSec}`;
+    });
+
+    progressContainer.addEventListener("click", (e) => {
+      const width = progressContainer.clientWidth;
+      const clickX = e.offsetX;
+      const duration = audio.duration;
+      audio.currentTime = (clickX / width) * duration;
+    });
+
+    // Volume control
+    volumeControl.addEventListener("input", (e) => {
+      audio.volume = e.target.value;
+    });
+
+    // Auto next track
+    audio.addEventListener("ended", () => {
+      currentTrack = (currentTrack + 1) % tracks.length;
+      loadTrack(currentTrack);
+      playTrack();
+    });
+
+    // Theme toggle
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      themeToggle.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+    });
+  </script>
+</body>
+</html>
